@@ -1,5 +1,6 @@
 'use client'
 import { Search, ShoppingCart } from "lucide-react";
+import AuthControls from "@/components/auth/AuthControls";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,7 +15,14 @@ const Navbar = () => {
 
     const handleSearch = (e) => {
         e.preventDefault()
-        router.push(`/shop?search=${search}`)
+        const normalizedSearch = search.trim()
+
+        if (!normalizedSearch) {
+            router.push('/shop')
+            return
+        }
+
+        router.push(`/shop?search=${encodeURIComponent(normalizedSearch)}`)
     }
 
     return (
@@ -41,23 +49,19 @@ const Navbar = () => {
                             <input className="w-full bg-transparent outline-none placeholder-slate-600" type="text" placeholder="Search products" value={search} onChange={(e) => setSearch(e.target.value)} required />
                         </form>
 
-                        <Link href="/cart" className="relative flex items-center gap-2 text-slate-600">
+                        <Link href="/cart" prefetch={false} className="relative flex items-center gap-2 text-slate-600">
                             <ShoppingCart size={18} />
                             Cart
                             <button className="absolute -top-1 left-3 text-[8px] text-white bg-slate-600 size-3.5 rounded-full">{cartCount}</button>
                         </Link>
 
-                        <button className="px-8 py-2 bg-indigo-500 hover:bg-indigo-600 transition text-white rounded-full">
-                            Login
-                        </button>
+                        <AuthControls />
 
                     </div>
 
                     {/* Mobile User Button  */}
                     <div className="sm:hidden">
-                        <button className="px-7 py-1.5 bg-indigo-500 hover:bg-indigo-600 text-sm transition text-white rounded-full">
-                            Login
-                        </button>
+                        <AuthControls mobile />
                     </div>
                 </div>
             </div>

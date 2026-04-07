@@ -1,3 +1,4 @@
+import { requireRole } from "@/lib/supabase/auth";
 import AdminLayout from "@/components/admin/AdminLayout";
 
 export const metadata = {
@@ -5,7 +6,8 @@ export const metadata = {
     description: "GoCart. - Admin",
 };
 
-export default function RootAdminLayout({ children }) {
+export default async function RootAdminLayout({ children }) {
+    await requireRole('admin', { returnBackUrl: '/admin' });
 
     return (
         <>

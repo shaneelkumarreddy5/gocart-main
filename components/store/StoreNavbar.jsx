@@ -1,4 +1,5 @@
 'use client'
+import LogoutButton from "@/components/auth/LogoutButton"
 import Link from "next/link"
 
 const StoreNavbar = () => {
@@ -14,6 +15,7 @@ const StoreNavbar = () => {
             </Link>
             <div className="flex items-center gap-3">
                 <p>Hi, Seller</p>
+                <LogoutButton />
             </div>
         </div>
     )
