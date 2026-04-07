@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { getSupabaseClient } from '@/lib/supabaseClient'
 import LogoutButton from './LogoutButton'
 
 const AuthControls = ({ mobile = false }) => {
@@ -10,8 +10,19 @@ const AuthControls = ({ mobile = false }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false)
 
     useEffect(() => {
-        const supabase = createClient()
+        let supabase
         let isActive = true
+
+        try {
+            supabase = getSupabaseClient()
+        } catch (err) {
+            console.error('Supabase init error:', err)
+            setIsAuthenticated(false)
+            setIsLoaded(true)
+            return () => {
+                isActive = false
+            }
+        }
 
         const loadUser = async () => {
             try {
@@ -31,12 +42,20 @@ const AuthControls = ({ mobile = false }) => {
         loadUser()
 
         const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-            if (!isActive) {
-                return
-            }
+            try {
+                if (!isActive) {
+                    return
+                }
 
-            setIsAuthenticated(Boolean(session?.user))
-            setIsLoaded(true)
+                setIsAuthenticated(Boolean(session?.user))
+                setIsLoaded(true)
+            } catch (err) {
+                console.error('Supabase auth change error:', err)
+                if (isActive) {
+                    setIsAuthenticated(false)
+                    setIsLoaded(true)
+                }
+            }
         })
 
         return () => {

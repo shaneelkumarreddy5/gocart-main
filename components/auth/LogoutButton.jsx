@@ -3,7 +3,7 @@
 import { LogOutIcon } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
+import { getSupabaseClient } from '@/lib/supabaseClient'
 
 const LogoutButton = ({ mobile = false }) => {
     const router = useRouter()
@@ -12,10 +12,16 @@ const LogoutButton = ({ mobile = false }) => {
     const handleLogout = async () => {
         setIsLoading(true)
 
-        const supabase = createClient()
-        await supabase.auth.signOut()
-        router.refresh()
-        router.push('/sign-in')
+        try {
+            const supabase = getSupabaseClient()
+            await supabase.auth.signOut()
+            router.refresh()
+            router.push('/sign-in')
+        } catch (err) {
+            console.error('Supabase error:', err)
+        } finally {
+            setIsLoading(false)
+        }
     }
 
     return (

@@ -63,20 +63,28 @@ export async function signInAction(_previousState, formData) {
         }
     }
 
-    const supabase = await createClient()
-    const { error } = await supabase.auth.signInWithPassword({
-        email: parsedInput.data.email,
-        password: parsedInput.data.password,
-    })
+    try {
+        const supabase = await createClient()
+        const { error } = await supabase.auth.signInWithPassword({
+            email: parsedInput.data.email,
+            password: parsedInput.data.password,
+        })
 
-    if (error) {
+        if (error) {
+            return {
+                status: 'error',
+                message: error.message,
+            }
+        }
+
+        redirect(getSafeRedirectPath(parsedInput.data.next))
+    } catch (err) {
+        console.error('Supabase error:', err)
         return {
             status: 'error',
-            message: error.message,
+            message: 'Could not sign in right now. Please try again.',
         }
     }
-
-    redirect(getSafeRedirectPath(parsedInput.data.next))
 }
 
 export async function signUpAction(_previousState, formData) {
@@ -94,29 +102,37 @@ export async function signUpAction(_previousState, formData) {
         }
     }
 
-    const supabase = await createClient()
-    const origin = await getOrigin()
-    const { data, error } = await supabase.auth.signUp({
-        email: parsedInput.data.email,
-        password: parsedInput.data.password,
-        options: {
-            emailRedirectTo: `${origin}/sign-in`,
-        },
-    })
+    try {
+        const supabase = await createClient()
+        const origin = await getOrigin()
+        const { data, error } = await supabase.auth.signUp({
+            email: parsedInput.data.email,
+            password: parsedInput.data.password,
+            options: {
+                emailRedirectTo: `${origin}/sign-in`,
+            },
+        })
 
-    if (error) {
+        if (error) {
+            return {
+                status: 'error',
+                message: error.message,
+            }
+        }
+
+        if (data.session) {
+            redirect(getSafeRedirectPath(parsedInput.data.next))
+        }
+
+        return {
+            status: 'success',
+            message: 'Check your email to confirm your account before signing in.',
+        }
+    } catch (err) {
+        console.error('Supabase error:', err)
         return {
             status: 'error',
-            message: error.message,
+            message: 'Could not create your account right now. Please try again.',
         }
-    }
-
-    if (data.session) {
-        redirect(getSafeRedirectPath(parsedInput.data.next))
-    }
-
-    return {
-        status: 'success',
-        message: 'Check your email to confirm your account before signing in.',
     }
 }
