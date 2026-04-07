@@ -4,13 +4,17 @@ import { fileURLToPath } from 'node:url';
 /** @type {import('next').NextConfig} */
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
+const supabaseWs = supabaseUrl.replace(/^https/, 'wss').replace(/^http/, 'ws')
+const connectSrc = ['\'self\'', supabaseUrl, supabaseWs].filter(Boolean).join(' ')
+
 const securityHeaders = [
     {
         key: 'Content-Security-Policy',
         value: [
             "default-src 'self'",
             "base-uri 'self'",
-            "connect-src 'self'",
+            `connect-src ${connectSrc}`,
             "font-src 'self' data:",
             "form-action 'self'",
             "frame-ancestors 'none'",

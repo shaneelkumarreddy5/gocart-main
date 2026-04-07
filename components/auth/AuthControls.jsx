@@ -14,14 +14,18 @@ const AuthControls = ({ mobile = false }) => {
         let isActive = true
 
         const loadUser = async () => {
-            const { data } = await supabase.auth.getUser()
+            try {
+                const { data } = await supabase.auth.getUser()
 
-            if (!isActive) {
-                return
+                if (!isActive) return
+
+                setIsAuthenticated(Boolean(data?.user))
+            } catch {
+                if (!isActive) return
+                setIsAuthenticated(false)
+            } finally {
+                if (isActive) setIsLoaded(true)
             }
-
-            setIsAuthenticated(Boolean(data.user))
-            setIsLoaded(true)
         }
 
         loadUser()

@@ -36,7 +36,12 @@ export async function proxy(request) {
         return NextResponse.redirect(new URL('/', request.url))
     }
 
-    if ((pathname.startsWith(ADMIN_ROUTE_PREFIX) || pathname.startsWith(SELLER_ROUTE_PREFIX) || isAuthenticatedRoute(pathname)) && !userId) {
+    if (
+        (pathname.startsWith(ADMIN_ROUTE_PREFIX) ||
+            pathname.startsWith(SELLER_ROUTE_PREFIX) ||
+            isAuthenticatedRoute(pathname)) &&
+        !userId
+    ) {
         return getLoginRedirect(request)
     }
 
