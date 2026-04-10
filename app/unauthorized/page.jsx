@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { ArrowRightIcon, ShieldAlertIcon } from 'lucide-react'
 
 export const metadata = {
-    title: 'Unauthorized | GoCart.',
+    title: 'Unauthorized | Glonni',
     description: 'Access denied',
 }
 

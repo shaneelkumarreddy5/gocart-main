@@ -2,8 +2,8 @@ import { requireRole } from '@/lib/supabase/auth'
 import StoreLayout from '@/components/store/StoreLayout'
 
 export const metadata = {
-    title: 'GoCart. - Vendor Dashboard',
-    description: 'GoCart vendor control center',
+    title: 'Glonni - Vendor Dashboard',
+    description: 'Glonni vendor control center',
 }
 
 export default async function VendorDashboardLayout({ children }) {

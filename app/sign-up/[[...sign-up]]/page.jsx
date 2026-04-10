@@ -1,8 +1,8 @@
 import AuthForm from '@/components/auth/AuthForm'
 
 export const metadata = {
-    title: 'Sign Up | GoCart.',
-    description: 'Create your GoCart account',
+    title: 'Sign Up | Glonni',
+    description: 'Create your Glonni account',
 }
 
 export default async function SignUpPage({ searchParams }) {

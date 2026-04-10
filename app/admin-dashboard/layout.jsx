@@ -2,8 +2,8 @@ import { requireRole } from '@/lib/supabase/auth'
 import AdminLayout from '@/components/admin/AdminLayout'
 
 export const metadata = {
-    title: 'GoCart. - Admin Dashboard',
-    description: 'GoCart platform control panel',
+    title: 'Glonni - Admin Dashboard',
+    description: 'Glonni platform control panel',
 }
 
 export default async function AdminDashboardLayout({ children }) {
