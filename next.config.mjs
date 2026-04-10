@@ -3,10 +3,14 @@ import { fileURLToPath } from 'node:url';
 
 /** @type {import('next').NextConfig} */
 const projectRoot = path.dirname(fileURLToPath(import.meta.url))
+const isDev = process.env.NODE_ENV !== 'production'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const supabaseWs = supabaseUrl.replace(/^https/, 'wss').replace(/^http/, 'ws')
 const connectSrc = ['\'self\'', supabaseUrl, supabaseWs].filter(Boolean).join(' ')
+const scriptSrc = ["'self'", "'unsafe-inline'", isDev ? "'unsafe-eval'" : null]
+    .filter(Boolean)
+    .join(' ')
 
 const securityHeaders = [
     {
@@ -20,7 +24,7 @@ const securityHeaders = [
             "frame-ancestors 'none'",
             "img-src 'self' data: blob:",
             "object-src 'none'",
-            "script-src 'self' 'unsafe-inline'",
+            `script-src ${scriptSrc}`,
             "style-src 'self' 'unsafe-inline'",
             'upgrade-insecure-requests',
         ].join('; '),
