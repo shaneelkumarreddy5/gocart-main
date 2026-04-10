@@ -7,7 +7,7 @@ export const metadata = {
 };
 
 export default async function RootAdminLayout({ children }) {
-    await requireRole('seller', { returnBackUrl: '/store' });
+    await requireRole('vendor', { returnBackUrl: '/store' });
 
     return (
         <>

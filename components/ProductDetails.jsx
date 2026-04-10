@@ -24,7 +24,22 @@ const ProductDetails = ({ product }) => {
         dispatch(addToCart({ productId }))
     }
 
-    const averageRating = product.rating.reduce((acc, item) => acc + item.rating, 0) / product.rating.length;
+    const buyNowHandler = () => {
+        if (!cart[productId]) {
+            dispatch(addToCart({ productId }))
+        }
+        router.push('/cart')
+    }
+
+    const ratingList = Array.isArray(product.rating) ? product.rating : []
+    const averageRating = ratingList.length ? ratingList.reduce((acc, item) => acc + item.rating, 0) / ratingList.length : 0
+    const cashbackAmount = Number(product.cashbackAmount || Math.max(1, (Number(product.price || 0) * 0.08).toFixed(0)))
+    const bestOffer = product.bestOffer || `Save ${((product.mrp - product.price) / product.mrp * 100).toFixed(0)}% today`
+    const offers = product.offers || [
+        'Bank Offer: 10% instant discount on select cards',
+        'Brand Coupon: Extra 5% off for first purchase',
+        'Vendor Coupon: Use SAVE5 at checkout',
+    ]
     
     return (
         <div className="flex max-lg:flex-col gap-12">
@@ -46,15 +61,26 @@ const ProductDetails = ({ product }) => {
                     {Array(5).fill('').map((_, index) => (
                         <StarIcon key={index} size={14} className='text-transparent mt-0.5' fill={averageRating >= index + 1 ? "#00C950" : "#D1D5DB"} />
                     ))}
-                    <p className="text-sm ml-3 text-slate-500">{product.rating.length} Reviews</p>
+                    <p className="text-sm ml-3 text-slate-500">{ratingList.length} Reviews</p>
                 </div>
                 <div className="flex items-start my-6 gap-3 text-2xl font-semibold text-slate-800">
                     <p> {currency}{product.price} </p>
                     <p className="text-xl text-slate-500 line-through">{currency}{product.mrp}</p>
                 </div>
+                <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+                    ₹{cashbackAmount} Cashback - Pending until delivery/conditions.
+                </p>
                 <div className="flex items-center gap-2 text-slate-500">
                     <TagIcon size={14} />
-                    <p>Save {((product.mrp - product.price) / product.mrp * 100).toFixed(0)}% right now</p>
+                    <p>{bestOffer}</p>
+                </div>
+                <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="font-medium text-slate-700">Offers</p>
+                    <ul className="mt-2 space-y-1 text-sm text-slate-600">
+                        {offers.map((offer) => (
+                            <li key={offer}>• {offer}</li>
+                        ))}
+                    </ul>
                 </div>
                 <div className="flex items-end gap-5 mt-10">
                     {
@@ -76,6 +102,16 @@ const ProductDetails = ({ product }) => {
                     <p className="flex gap-3"> <UserIcon className="text-slate-400" /> Trusted by top brands </p>
                 </div>
 
+            </div>
+            <div className="fixed bottom-0 left-0 right-0 z-30 border-t border-slate-200 bg-white/95 p-3 backdrop-blur md:hidden">
+                <div className="mx-auto flex max-w-7xl gap-3">
+                    <button onClick={() => !cart[productId] ? addToCartHandler() : router.push('/cart')} className="flex-1 rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700">
+                        Add to Cart
+                    </button>
+                    <button onClick={buyNowHandler} className="flex-1 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+                        Buy Now
+                    </button>
+                </div>
             </div>
         </div>
     )

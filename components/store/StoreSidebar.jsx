@@ -9,7 +9,7 @@ const StoreSidebar = ({storeInfo}) => {
     const pathname = usePathname()
 
     const sidebarLinks = [
-        { name: 'Dashboard', href: '/store', icon: HomeIcon },
+        { name: 'Dashboard', href: '/vendor-dashboard', icon: HomeIcon },
         { name: 'Add Product', href: '/store/add-product', icon: SquarePlusIcon },
         { name: 'Manage Product', href: '/store/manage-product', icon: SquarePenIcon },
         { name: 'Orders', href: '/store/orders', icon: LayoutListIcon },
@@ -18,7 +18,11 @@ const StoreSidebar = ({storeInfo}) => {
     return (
         <div className="inline-flex h-full flex-col gap-5 border-r border-slate-200 sm:min-w-60">
             <div className="flex flex-col gap-3 justify-center items-center pt-8 max-sm:hidden">
-                <Image className="w-14 h-14 rounded-full shadow-md" src={storeInfo?.logo} alt="" width={80} height={80} />
+                {storeInfo?.logo ? (
+                    <img className="w-14 h-14 rounded-full shadow-md object-cover" src={storeInfo.logo} alt="store-logo" />
+                ) : (
+                    <div className="w-14 h-14 rounded-full shadow-md bg-slate-100" />
+                )}
                 <p className="text-slate-700">{storeInfo?.name}</p>
             </div>
 

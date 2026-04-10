@@ -4,12 +4,16 @@ import AddressModal from './AddressModal';
 import { useSelector } from 'react-redux';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { getSupabaseClient } from '@/lib/supabaseClient';
+import { clearCart } from '@/lib/features/cart/cartSlice';
+import { useDispatch } from 'react-redux';
 
 const OrderSummary = ({ totalPrice, items }) => {
 
     const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$';
 
     const router = useRouter();
+    const dispatch = useDispatch();
 
     const addressList = useSelector(state => state.address.list);
 
@@ -18,6 +22,7 @@ const OrderSummary = ({ totalPrice, items }) => {
     const [showAddressModal, setShowAddressModal] = useState(false);
     const [couponCodeInput, setCouponCodeInput] = useState('');
     const [coupon, setCoupon] = useState('');
+    const estimatedCashback = Number((totalPrice * 0.08).toFixed(2))
 
     const handleCouponCode = async (event) => {
         event.preventDefault();
@@ -27,6 +32,128 @@ const OrderSummary = ({ totalPrice, items }) => {
     const handlePlaceOrder = async (e) => {
         e.preventDefault();
 
+        if (!selectedAddress) {
+            throw new Error('Please select an address first.')
+        }
+
+        if (!items.length) {
+            throw new Error('Your cart is empty.')
+        }
+
+        const supabase = getSupabaseClient()
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user?.id) {
+            throw new Error('Please sign in to place your order.')
+        }
+
+        const groupedByVendor = items.reduce((acc, item) => {
+            const vendorId = item.storeId
+            if (!vendorId) return acc
+            if (!acc[vendorId]) acc[vendorId] = []
+            acc[vendorId].push(item)
+            return acc
+        }, {})
+
+        const vendorEntries = Object.entries(groupedByVendor)
+        if (!vendorEntries.length) {
+            throw new Error('No valid vendor items found in cart.')
+        }
+
+        for (const [vendorId, vendorItems] of vendorEntries) {
+            const vendorTotal = vendorItems.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
+
+            const { data: order, error: orderError } = await supabase
+                .from('orders')
+                .insert({
+                    user_id: user.id,
+                    vendor_id: vendorId,
+                    total: vendorTotal,
+                    payment_method: paymentMethod,
+                    shipping_address: selectedAddress,
+                    status: 'ORDER_PLACED',
+                    is_paid: paymentMethod === 'STRIPE',
+                })
+                .select('id')
+                .single()
+
+            if (orderError) {
+                throw orderError
+            }
+
+            const orderItemsPayload = vendorItems.map((item) => ({
+                order_id: order.id,
+                product_id: item.id,
+                quantity: Number(item.quantity || 1),
+                price: Number(item.price || 0),
+            }))
+
+            const { error: itemError } = await supabase
+                .from('order_items')
+                .insert(orderItemsPayload)
+
+            if (itemError) {
+                throw itemError
+            }
+
+            const cashbackAmount = Number((vendorTotal * 0.08).toFixed(2))
+
+            const { error: cashbackError } = await supabase
+                .from('cashback')
+                .insert({
+                    user_id: user.id,
+                    order_id: order.id,
+                    amount: cashbackAmount,
+                    status: 'pending',
+                    reason: 'Order cashback pending until delivery/no-return',
+                })
+
+            if (cashbackError) {
+                console.error('Cashback create warning:', cashbackError)
+            }
+
+            const { error: userTxnError } = await supabase
+                .from('transactions')
+                .insert({
+                    user_id: user.id,
+                    order_id: order.id,
+                    amount: cashbackAmount,
+                    txn_type: 'cashback',
+                    status: 'pending',
+                    description: 'Pending cashback generated at checkout',
+                })
+
+            if (userTxnError) {
+                console.error('User transaction create warning:', userTxnError)
+            }
+
+            try {
+                const { data: wallet } = await supabase
+                    .from('wallets')
+                    .select('id, pending_balance, available_balance')
+                    .eq('user_id', user.id)
+                    .maybeSingle()
+
+                if (!wallet?.id) {
+                    await supabase.from('wallets').insert({
+                        user_id: user.id,
+                        pending_balance: cashbackAmount,
+                        available_balance: 0,
+                    })
+                } else {
+                    await supabase
+                        .from('wallets')
+                        .update({
+                            pending_balance: Number(wallet.pending_balance || 0) + cashbackAmount,
+                        })
+                        .eq('id', wallet.id)
+                }
+            } catch (walletErr) {
+                console.error('Wallet pending balance warning:', walletErr)
+            }
+        }
+
+        dispatch(clearCart())
         router.push('/orders')
     }
 
@@ -96,6 +223,18 @@ const OrderSummary = ({ totalPrice, items }) => {
                         </div>
                     )
                 }
+            </div>
+            <div className='rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-700 text-xs'>
+                <p className='font-medium'>Cashback Summary</p>
+                <p className='mt-1'>Estimated Cashback: {currency}{estimatedCashback} (Pending until delivery/no-return conditions).</p>
+            </div>
+            <div className='mt-3 rounded-lg border border-sky-200 bg-sky-50 p-3 text-sky-700 text-xs'>
+                <p className='font-medium'>Payment Offers</p>
+                <ul className='mt-1 space-y-1'>
+                    <li>Bank Offer: 10% instant discount on select cards</li>
+                    <li>Brand Offer: Extra coupon support on selected products</li>
+                    <li>Vendor Offer: Coupon availability shown at listing level</li>
+                </ul>
             </div>
             <div className='flex justify-between py-4'>
                 <p>Total:</p>

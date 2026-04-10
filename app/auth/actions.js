@@ -3,6 +3,7 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { z } from 'zod'
+import { getPostLoginRouteByRole } from '@/lib/supabase/auth'
 import { getSiteUrl } from '@/lib/supabase/env'
 import { getSafeRedirectPath } from '@/lib/supabase/paths'
 import { createClient } from '@/lib/supabase/server'
@@ -49,6 +50,28 @@ const getMessageFromIssue = (issues) => {
     return issues[0]?.message || 'Something went wrong. Please try again.'
 }
 
+const getRedirectAfterAuth = async (supabase, requestedPath) => {
+    const safePath = getSafeRedirectPath(requestedPath)
+
+    if (safePath && safePath !== '/') {
+        return safePath
+    }
+
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user?.id) {
+        return '/'
+    }
+
+    const { data: userRow } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .maybeSingle()
+
+    return getPostLoginRouteByRole(userRow?.role)
+}
+
 export async function signInAction(_previousState, formData) {
     const parsedInput = authFormSchema.safeParse({
         email: getFieldValue(formData, 'email'),
@@ -77,7 +100,7 @@ export async function signInAction(_previousState, formData) {
             }
         }
 
-        redirect(getSafeRedirectPath(parsedInput.data.next))
+        redirect(await getRedirectAfterAuth(supabase, parsedInput.data.next))
     } catch (err) {
         if (err instanceof Error && (err.digest === 'NEXT_REDIRECT' || err.message === 'NEXT_REDIRECT')) {
             throw err
@@ -124,7 +147,7 @@ export async function signUpAction(_previousState, formData) {
         }
 
         if (data.session) {
-            redirect(getSafeRedirectPath(parsedInput.data.next))
+            redirect(await getRedirectAfterAuth(supabase, parsedInput.data.next))
         }
 
         return {

@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState } from "react"
 import Loading from "@/components/Loading"
-import { orderDummyData } from "@/assets/assets"
+import { getSupabaseClient } from "@/lib/supabaseClient"
 
 export default function StoreOrders() {
     const [orders, setOrders] = useState([])
@@ -11,12 +11,113 @@ export default function StoreOrders() {
 
 
     const fetchOrders = async () => {
-       setOrders(orderDummyData)
-       setLoading(false)
+        try {
+            const supabase = getSupabaseClient()
+            const { data: { user } } = await supabase.auth.getUser()
+
+            if (!user?.id) {
+                setOrders([])
+                setLoading(false)
+                return
+            }
+
+            const { data: vendor } = await supabase
+                .from('vendors')
+                .select('id')
+                .eq('user_id', user.id)
+                .maybeSingle()
+
+            if (!vendor?.id) {
+                setOrders([])
+                setLoading(false)
+                return
+            }
+
+            const { data, error } = await supabase
+                .from('orders')
+                .select(`
+                    id,
+                    total,
+                    status,
+                    payment_method,
+                    is_paid,
+                    created_at,
+                    shipping_address,
+                    users!orders_user_id_fkey (id, email),
+                    order_items (
+                        id,
+                        quantity,
+                        price,
+                        products (id, name, images)
+                    )
+                `)
+                .eq('vendor_id', vendor.id)
+                .order('created_at', { ascending: false })
+
+            if (error) {
+                throw error
+            }
+
+            const mappedOrders = (data || []).map((order, index) => ({
+                id: order.id,
+                total: order.total,
+                status: order.status,
+                user: {
+                    name: order.users?.email ? order.users.email.split('@')[0] : `user-${index + 1}`,
+                    email: order.users?.email || 'N/A',
+                },
+                paymentMethod: order.payment_method,
+                isPaid: order.is_paid,
+                createdAt: order.created_at,
+                address: {
+                    name: order.shipping_address?.name || 'Customer',
+                    street: order.shipping_address?.street || '',
+                    city: order.shipping_address?.city || '',
+                    state: order.shipping_address?.state || '',
+                    zip: order.shipping_address?.zip || '',
+                    country: order.shipping_address?.country || '',
+                    phone: order.shipping_address?.phone || '',
+                },
+                orderItems: (order.order_items || []).map((item) => ({
+                    quantity: item.quantity,
+                    price: item.price,
+                    product: {
+                        id: item.products?.id,
+                        name: item.products?.name,
+                        images: Array.isArray(item.products?.images) ? item.products.images : [],
+                    },
+                })),
+                isCouponUsed: false,
+                coupon: null,
+            }))
+
+            setOrders(mappedOrders)
+        } catch (err) {
+            console.error('Store orders fetch error:', err)
+            setOrders([])
+        } finally {
+            setLoading(false)
+        }
     }
 
     const updateOrderStatus = async (orderId, status) => {
-        // Logic to update the status of an order
+        try {
+            const supabase = getSupabaseClient()
+            const { error } = await supabase
+                .from('orders')
+                .update({ status })
+                .eq('id', orderId)
+
+            if (error) {
+                throw error
+            }
+
+            setOrders((prev) => prev.map((order) => (
+                order.id === orderId ? { ...order, status } : order
+            )))
+        } catch (err) {
+            console.error('Store order update error:', err)
+        }
 
 
     }
@@ -63,7 +164,7 @@ export default function StoreOrders() {
                                         {index + 1}
                                     </td>
                                     <td className="px-4 py-3">{order.user?.name}</td>
-                                    <td className="px-4 py-3 font-medium text-slate-800">${order.total}</td>
+                                    <td className="px-4 py-3 font-medium text-slate-800">₹{Number(order.total || 0).toFixed(2)}</td>
                                     <td className="px-4 py-3">{order.paymentMethod}</td>
                                     <td className="px-4 py-3">
                                         {order.isCouponUsed ? (
@@ -120,14 +221,14 @@ export default function StoreOrders() {
                                 {selectedOrder.orderItems.map((item, i) => (
                                     <div key={i} className="flex items-center gap-4 border border-slate-100 shadow rounded p-2">
                                         <img
-                                            src={item.product.images?.[0].src || item.product.images?.[0]}
+                                            src={item.product.images?.[0] || '/favicon.ico'}
                                             alt={item.product?.name}
                                             className="w-16 h-16 object-cover rounded"
                                         />
                                         <div className="flex-1">
                                             <p className="text-slate-800">{item.product?.name}</p>
                                             <p>Qty: {item.quantity}</p>
-                                            <p>Price: ${item.price}</p>
+                                            <p>Price: ₹{Number(item.price || 0).toFixed(2)}</p>
                                         </div>
                                     </div>
                                 ))}

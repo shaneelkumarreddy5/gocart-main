@@ -10,8 +10,13 @@ const OrderItem = ({ order }) => {
 
     const currency = process.env.NEXT_PUBLIC_CURRENCY_SYMBOL || '$';
     const [ratingModal, setRatingModal] = useState(null);
+    const [noReturnConfirmed, setNoReturnConfirmed] = useState(Boolean(order.noReturnConfirmed));
 
     const { ratings } = useSelector(state => state.rating);
+
+    const timeline = ['ORDER_PLACED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED']
+    const orderStatus = String(order.status || '').toUpperCase()
+    const currentIndex = timeline.indexOf(orderStatus)
 
     return (
         <>
@@ -55,16 +60,34 @@ const OrderItem = ({ order }) => {
 
                 <td className="text-left space-y-2 text-sm max-md:hidden">
                     <div
-                        className={`flex items-center justify-center gap-1 rounded-full p-1 ${order.status === 'confirmed'
+                        className={`flex items-center justify-center gap-1 rounded-full p-1 ${orderStatus === 'PROCESSING'
                             ? 'text-yellow-500 bg-yellow-100'
-                            : order.status === 'delivered'
+                            : orderStatus === 'DELIVERED'
                                 ? 'text-green-500 bg-green-100'
                                 : 'text-slate-500 bg-slate-100'
                             }`}
                     >
                         <DotIcon size={10} className="scale-250" />
-                        {order.status.split('_').join(' ').toLowerCase()}
+                        {orderStatus.split('_').join(' ').toLowerCase()}
                     </div>
+                    <div className="mt-3 flex gap-1">
+                        {timeline.map((step, index) => (
+                            <span key={step} className={`h-1.5 w-14 rounded-full ${index <= currentIndex ? 'bg-emerald-500' : 'bg-slate-200'}`} />
+                        ))}
+                    </div>
+                    <p className="text-xs text-slate-500">Packed → Shipped → Out for Delivery → Delivered</p>
+                    {orderStatus === 'DELIVERED' && !noReturnConfirmed && (
+                        <button
+                            type="button"
+                            onClick={() => setNoReturnConfirmed(true)}
+                            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs text-white"
+                        >
+                            No Return (Move Cashback to Available)
+                        </button>
+                    )}
+                    {orderStatus === 'DELIVERED' && noReturnConfirmed && (
+                        <p className="text-xs font-medium text-emerald-700">Cashback moved to Available.</p>
+                    )}
                 </td>
             </tr>
             {/* Mobile */}

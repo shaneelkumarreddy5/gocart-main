@@ -3,7 +3,7 @@ import { useEffect, useState } from "react"
 import { format } from "date-fns"
 import toast from "react-hot-toast"
 import { DeleteIcon } from "lucide-react"
-import { couponDummyData } from "@/assets/assets"
+import { getSupabaseClient } from "@/lib/supabaseClient"
 
 export default function AdminCoupons() {
 
@@ -20,22 +20,95 @@ export default function AdminCoupons() {
     })
 
     const fetchCoupons = async () => {
-        setCoupons(couponDummyData)
+        try {
+            const supabase = getSupabaseClient()
+            const { data, error } = await supabase
+                .from('coupons')
+                .select('id, code, description, discount, for_new_user, for_member, is_public, expires_at')
+                .order('expires_at', { ascending: true })
+
+            if (error) {
+                throw error
+            }
+
+            const mappedCoupons = (data || []).map((coupon) => ({
+                id: coupon.id,
+                code: coupon.code,
+                description: coupon.description,
+                discount: coupon.discount,
+                forNewUser: coupon.for_new_user,
+                forMember: coupon.for_member,
+                isPublic: coupon.is_public,
+                expiresAt: coupon.expires_at,
+            }))
+
+            setCoupons(mappedCoupons)
+        } catch (err) {
+            console.error('Coupons fetch error:', err)
+            setCoupons([])
+        }
     }
 
     const handleAddCoupon = async (e) => {
         e.preventDefault()
-        // Logic to add a coupon
+        try {
+            const supabase = getSupabaseClient()
+            const payload = {
+                code: newCoupon.code.trim().toUpperCase(),
+                description: newCoupon.description,
+                discount: Number(newCoupon.discount),
+                for_new_user: newCoupon.forNewUser,
+                for_member: newCoupon.forMember,
+                is_public: newCoupon.isPublic,
+                expires_at: newCoupon.expiresAt,
+            }
+
+            const { error } = await supabase.from('coupons').insert(payload)
+
+            if (error) {
+                throw error
+            }
+
+            await fetchCoupons()
+            setNewCoupon({
+                code: '',
+                description: '',
+                discount: '',
+                forNewUser: false,
+                forMember: false,
+                isPublic: false,
+                expiresAt: new Date(),
+            })
+        } catch (err) {
+            console.error('Coupon create error:', err)
+            throw err
+        }
 
 
     }
 
     const handleChange = (e) => {
-        setNewCoupon({ ...newCoupon, [e.target.name]: e.target.value })
+        const value = e.target.name === 'expiresAt' ? new Date(e.target.value) : e.target.value
+        setNewCoupon({ ...newCoupon, [e.target.name]: value })
     }
 
     const deleteCoupon = async (code) => {
-        // Logic to delete a coupon
+        try {
+            const supabase = getSupabaseClient()
+            const { error } = await supabase
+                .from('coupons')
+                .delete()
+                .eq('code', code)
+
+            if (error) {
+                throw error
+            }
+
+            setCoupons((prev) => prev.filter((coupon) => coupon.code !== code))
+        } catch (err) {
+            console.error('Coupon delete error:', err)
+            throw err
+        }
 
 
     }
@@ -118,7 +191,7 @@ export default function AdminCoupons() {
                                     <td className="py-3 px-4 font-medium text-slate-800">{coupon.code}</td>
                                     <td className="py-3 px-4 text-slate-800">{coupon.description}</td>
                                     <td className="py-3 px-4 text-slate-800">{coupon.discount}%</td>
-                                    <td className="py-3 px-4 text-slate-800">{format(coupon.expiresAt, 'yyyy-MM-dd')}</td>
+                                    <td className="py-3 px-4 text-slate-800">{format(new Date(coupon.expiresAt), 'yyyy-MM-dd')}</td>
                                     <td className="py-3 px-4 text-slate-800">{coupon.forNewUser ? 'Yes' : 'No'}</td>
                                     <td className="py-3 px-4 text-slate-800">{coupon.forMember ? 'Yes' : 'No'}</td>
                                     <td className="py-3 px-4 text-slate-800">

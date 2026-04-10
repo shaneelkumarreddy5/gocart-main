@@ -41,6 +41,7 @@ const Navbar = () => {
                     <div className="hidden sm:flex items-center gap-4 lg:gap-8 text-slate-600">
                         <Link href="/">Home</Link>
                         <Link href="/shop">Shop</Link>
+                        <Link href="/wallet">Wallet</Link>
                         <Link href="/">About</Link>
                         <Link href="/">Contact</Link>
 

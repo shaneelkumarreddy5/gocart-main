@@ -11,7 +11,7 @@ const AdminSidebar = () => {
     const pathname = usePathname()
 
     const sidebarLinks = [
-        { name: 'Dashboard', href: '/admin', icon: HomeIcon },
+        { name: 'Dashboard', href: '/admin-dashboard', icon: HomeIcon },
         { name: 'Stores', href: '/admin/stores', icon: StoreIcon },
         { name: 'Approve Store', href: '/admin/approve', icon: ShieldCheckIcon },
         { name: 'Coupons', href: '/admin/coupons', icon: TicketPercentIcon  },
