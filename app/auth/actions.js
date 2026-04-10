@@ -79,6 +79,9 @@ export async function signInAction(_previousState, formData) {
 
         redirect(getSafeRedirectPath(parsedInput.data.next))
     } catch (err) {
+        if (err instanceof Error && (err.digest === 'NEXT_REDIRECT' || err.message === 'NEXT_REDIRECT')) {
+            throw err
+        }
         console.error('Supabase error:', err)
         return {
             status: 'error',
@@ -129,6 +132,9 @@ export async function signUpAction(_previousState, formData) {
             message: 'Check your email to confirm your account before signing in.',
         }
     } catch (err) {
+        if (err instanceof Error && (err.digest === 'NEXT_REDIRECT' || err.message === 'NEXT_REDIRECT')) {
+            throw err
+        }
         console.error('Supabase error:', err)
         return {
             status: 'error',

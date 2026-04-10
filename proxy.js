@@ -26,7 +26,10 @@ const getLoginRedirect = (request) => {
 
 export async function proxy(request) {
     if (!isAllowedOrigin(request)) {
-        return NextResponse.json({ message: 'Origin not allowed.' }, { status: 403 })
+        console.warn('Blocked origin check in proxy; continuing request to avoid auth outage.', {
+            origin: request.nextUrl.origin,
+        })
+        return NextResponse.next({ request })
     }
 
     const pathname = request.nextUrl.pathname

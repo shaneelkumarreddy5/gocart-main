@@ -11,23 +11,27 @@ const connectSrc = ['\'self\'', supabaseUrl, supabaseWs].filter(Boolean).join(' 
 const scriptSrc = ["'self'", "'unsafe-inline'", isDev ? "'unsafe-eval'" : null]
     .filter(Boolean)
     .join(' ')
+const cspDirectives = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    `connect-src ${connectSrc}`,
+    "font-src 'self' data:",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "img-src 'self' data: blob:",
+    "object-src 'none'",
+    `script-src ${scriptSrc}`,
+    "style-src 'self' 'unsafe-inline'",
+]
+
+if (!isDev) {
+    cspDirectives.push('upgrade-insecure-requests')
+}
 
 const securityHeaders = [
     {
         key: 'Content-Security-Policy',
-        value: [
-            "default-src 'self'",
-            "base-uri 'self'",
-            `connect-src ${connectSrc}`,
-            "font-src 'self' data:",
-            "form-action 'self'",
-            "frame-ancestors 'none'",
-            "img-src 'self' data: blob:",
-            "object-src 'none'",
-            `script-src ${scriptSrc}`,
-            "style-src 'self' 'unsafe-inline'",
-            'upgrade-insecure-requests',
-        ].join('; '),
+        value: cspDirectives.join('; '),
     },
     {
         key: 'Permissions-Policy',
