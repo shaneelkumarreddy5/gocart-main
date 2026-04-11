@@ -129,6 +129,9 @@ const AuthForm = ({ nextPath }) => {
                     <input type="hidden" name="next" value={typeof nextPath === 'string' ? nextPath : '/'} />
                     {isSignUp && (
                         <input type="hidden" name="role" value={roleConfig?.signUpRole ?? 'user'} />
+                                        {!isSignUp && (
+                                            <input type="hidden" name="expectedRole" value={roleConfig?.key ?? 'user'} />
+                                        )}
                     )}
 
                     <label className="block text-sm text-slate-600">

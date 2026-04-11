@@ -15,8 +15,17 @@ const authFormSchema = z.object({
     next: z.string().optional(),
 })
 
+const signInSchema = authFormSchema.extend({
+    expectedRole: z.string().optional(),
+})
+
 // Only 'user' and 'seller' are allowed via public signup — 'admin' is never accepted.
 const ALLOWED_SIGNUP_ROLES = new Set(['user', 'seller'])
+
+// Maps the form tab key to the normalised DB role for sign-in validation.
+const TAB_TO_ROLE = { user: 'user', vendor: 'vendor', admin: 'admin' }
+
+const ROLE_LABELS = { user: 'Customer', vendor: 'Vendor', admin: 'Admin' }
 
 const sanitizeSignupRole = (value) => {
     const role = typeof value === 'string' ? value.trim().toLowerCase() : 'user'
@@ -83,10 +92,11 @@ const getRedirectAfterAuth = async (supabase, requestedPath) => {
 }
 
 export async function signInAction(_previousState, formData) {
-    const parsedInput = authFormSchema.safeParse({
+    const parsedInput = signInSchema.safeParse({
         email: getFieldValue(formData, 'email'),
         password: getFieldValue(formData, 'password'),
         next: getFieldValue(formData, 'next'),
+        expectedRole: getFieldValue(formData, 'expectedRole'),
     })
 
     if (!parsedInput.success) {
@@ -107,6 +117,36 @@ export async function signInAction(_previousState, formData) {
             return {
                 status: 'error',
                 message: error.message,
+            }
+        }
+
+        // Validate that the signed-in user's DB role matches the selected tab.
+        const expectedTabRole = parsedInput.data.expectedRole
+        const targetRole = TAB_TO_ROLE[expectedTabRole]
+
+        if (targetRole && targetRole !== 'user') {
+            const { data: { user } } = await supabase.auth.getUser()
+            if (user?.id) {
+                const { data: userRow } = await supabase
+                    .from('users')
+                    .select('role')
+                    .eq('id', user.id)
+                    .maybeSingle()
+
+                const actualRole = getPostLoginRouteByRole(userRow?.role) === '/vendor-dashboard'
+                    ? 'vendor'
+                    : getPostLoginRouteByRole(userRow?.role) === '/admin-dashboard'
+                        ? 'admin'
+                        : 'user'
+
+                if (actualRole !== targetRole) {
+                    await supabase.auth.signOut()
+                    const label = ROLE_LABELS[expectedTabRole] || expectedTabRole
+                    return {
+                        status: 'error',
+                        message: `No ${label} account found for this email. Please sign up as a ${label} first, or select the correct account type.`,
+                    }
+                }
             }
         }
 
@@ -162,7 +202,20 @@ export async function signUpAction(_previousState, formData) {
         // Assign vendor (seller) role via admin client — never allows admin self-assignment.
         if (desiredRole === 'seller' && data.user?.id) {
             const adminClient = createAdminClient()
-            await adminClient.from('users').update({ role: 'seller' }).eq('id', data.user.id)
+            const { error: roleError } = await adminClient
+                .from('users')
+                .update({ role: 'seller' })
+                .eq('id', data.user.id)
+
+            if (roleError) {
+                console.error('Failed to assign vendor role:', roleError)
+                // Clean up the orphaned auth user so they can try again.
+                await adminClient.auth.admin.deleteUser(data.user.id)
+                return {
+                    status: 'error',
+                    message: 'Could not create your vendor account. Please try again.',
+                }
+            }
         }
 
         if (data.session) {

@@ -273,6 +273,11 @@ security definer
 set search_path = public
 as $$
 begin
+  -- Allow service_role (server-side admin operations) to change roles freely.
+  if auth.role() = 'service_role' then
+    return new;
+  end if;
+
   if old.role is distinct from new.role and not private.is_admin() then
     raise exception 'Only admins can change roles.';
   end if;
