@@ -10,7 +10,7 @@ export default async function SignUpPage({ searchParams }) {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-slate-50 px-6 py-12">
-            <AuthForm mode="sign-up" nextPath={params?.next} />
+            <AuthForm nextPath={params?.next} />
         </div>
     )
 }

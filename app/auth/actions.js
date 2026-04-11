@@ -7,6 +7,7 @@ import { getPostLoginRouteByRole } from '@/lib/supabase/auth'
 import { getSiteUrl } from '@/lib/supabase/env'
 import { getSafeRedirectPath } from '@/lib/supabase/paths'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/adminClient'
 
 const authFormSchema = z.object({
     email: z.string().trim().email('Enter a valid email address.'),
@@ -14,8 +15,17 @@ const authFormSchema = z.object({
     next: z.string().optional(),
 })
 
+// Only 'user' and 'seller' are allowed via public signup — 'admin' is never accepted.
+const ALLOWED_SIGNUP_ROLES = new Set(['user', 'seller'])
+
+const sanitizeSignupRole = (value) => {
+    const role = typeof value === 'string' ? value.trim().toLowerCase() : 'user'
+    return ALLOWED_SIGNUP_ROLES.has(role) ? role : 'user'
+}
+
 const signUpSchema = authFormSchema.extend({
     confirmPassword: z.string().min(8, 'Confirm your password.'),
+    role: z.string().optional(),
 }).superRefine((value, context) => {
     if (value.password !== value.confirmPassword) {
         context.addIssue({
@@ -119,6 +129,7 @@ export async function signUpAction(_previousState, formData) {
         password: getFieldValue(formData, 'password'),
         confirmPassword: getFieldValue(formData, 'confirmPassword'),
         next: getFieldValue(formData, 'next'),
+        role: getFieldValue(formData, 'role'),
     })
 
     if (!parsedInput.success) {
@@ -127,6 +138,8 @@ export async function signUpAction(_previousState, formData) {
             message: getMessageFromIssue(parsedInput.error.issues),
         }
     }
+
+    const desiredRole = sanitizeSignupRole(parsedInput.data.role)
 
     try {
         const supabase = await createClient()
@@ -144,6 +157,12 @@ export async function signUpAction(_previousState, formData) {
                 status: 'error',
                 message: error.message,
             }
+        }
+
+        // Assign vendor (seller) role via admin client — never allows admin self-assignment.
+        if (desiredRole === 'seller' && data.user?.id) {
+            const adminClient = createAdminClient()
+            await adminClient.from('users').update({ role: 'seller' }).eq('id', data.user.id)
         }
 
         if (data.session) {
